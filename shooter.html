@@ -1,0 +1,404 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>SHOOTER GAME</title>
+
+    <style>
+
+        body {
+            background-color: rgb(30, 58, 6);
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        h1 {
+            color: #42ea0a;
+        }
+
+        p {
+            color: #42ea0a;
+        }
+
+        #gameCanvas {
+            display: block;
+            margin: 20px auto;
+            background-color: black;
+            border: 2px solid #42ea0a;
+        }
+
+        #score {
+            color: #42ea0a;
+            font-size: 20px;
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+    <h1>SHOOTER GAME</h1>
+
+    <p>
+        Use your mouse to aim and click the targets!
+    </p>
+
+    <p id="score">Score: 0</p>
+
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+
+    <script>
+        // =========================
+        // game setup
+        // =========================
+
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        
+        //animations
+        let explosionImage = new Image();
+        explosionImage.src = "assets/explosion-32px_strip10.png";
+        explosionImage.onload = function() {
+            console.log("Explosion loaded!");
+        };
+        //explosion variables
+        let explosionFrame = 0;
+        let explosionActive = false;
+        let explosionX = 0;
+        let explosionY = 0;
+        let explosionTimer = 0;
+        // Player
+        let playerX = 375;
+        let playerY = 225;
+
+         
+        // Mouse
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // Target
+        let targetSize = 30;
+        let targetX = Math.random() * (canvas.width - targetSize);
+        let targetY = Math.random() * (canvas.height - targetSize);
+
+        // Score
+        let score = 0;
+
+        // Bullets
+        let bullets = [];
+        let bulletAngle;
+
+        // Animation
+        let animationrunning = false;
+
+        //movement keys
+        // Keyboard input
+        let keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+        
+        // =========================
+        //Input Handling
+        // =========================
+        
+        canvas.addEventListener("mousemove", function(event) {
+
+            mouseX = event.offsetX;
+            mouseY = event.offsetY;
+
+            console.log("Mouse:", mouseX, mouseY);
+            
+            redrawGame();//redraw the game to update the aim line
+        });
+
+        canvas.addEventListener("click", function(event) {
+
+            let clickX = event.offsetX;
+            let clickY = event.offsetY;
+ 
+            bulletAngle = Math.atan2(mouseY - (playerY+15), mouseX - (playerX+15));
+
+            // Check if target was clicked
+
+            
+            bulletActive = true;
+            
+            bullets.push([
+                playerX+15,
+                playerY+15,
+                bulletAngle                
+            ]);
+            if(!animationrunning){
+                animationrunning = true;
+                drawBullet();
+            }
+        });
+        window.addEventListener("keydown", function(event) {
+            if (event.key in keys) {
+                keys[event.key] = true;
+            }
+        });
+        window.addEventListener("keyup", function(event) {
+            if (event.key in keys) {
+                keys[event.key] = false;
+            }
+        });
+        //=========================
+        //Update Functions
+        //=========================
+               
+        //alien movement
+        function moveTarget(){
+            let dx = playerX-targetX
+            let dy = playerY-targetY
+            let distance = Math.hypot(dx, dy);
+            if(distance>0){
+                targetX+=(dx/distance)*2
+                targetY+=(dy/distance)*2
+            }
+        }
+        function updateBullet(){
+            for(let i =0; i<bullets.length; i++){
+                let bullet = bullets[i];
+                bullet[0] += 5*Math.cos(bullet[2]);
+                bullet[1] += 5*Math.sin(bullet[2]);
+
+                // Remove bullets that leave the canvas
+                if (
+                    bullet[0] >= canvas.width ||
+                    bullet[1] >= canvas.height ||
+                    bullet[0] <= 0 ||
+                    bullet[1] <= 0
+                ) {
+                    bullets.splice(i, 1);
+                    i--;
+                }
+            
+            // Check collision with alien
+                if (
+                    bullet[0] >= targetX - 10 &&
+                    bullet[0] <= targetX - 10 + targetSize &&
+                    bullet[1] >= targetY - 10 &&
+                    bullet[1] <= targetY - 10 + targetSize
+                ) {
+                    score++;
+
+                    bullets.splice(i, 1);
+                    i--;
+                    //explosion
+                    explosionX = targetX;
+                    explosionY = targetY;
+                    explosionFrame = 0;
+                    explosionTimer = 0;
+                    explosionActive = true;
+
+                    // Respawn alien
+                    targetX = Math.random() * (canvas.width - targetSize);
+                    targetY = Math.random() * (canvas.height - targetSize);
+
+                    // Update score display
+                    document.getElementById("score").innerHTML = "Score: " + score;
+                    
+
+                }
+            }
+        }
+        function updatePlayerPosition(){
+            if(keys.w || keys.ArrowUp){
+                playerY -= 5;
+            }
+            if(keys.s || keys.ArrowDown){
+                playerY += 5;
+            }
+            if(keys.a || keys.ArrowLeft){
+                playerX -= 5;
+            }
+            if(keys.d || keys.ArrowRight){
+                playerX += 5;
+            }
+            if (playerX + 30 > canvas.width) {
+                playerX = canvas.width - 30;
+            }
+            if(playerX < 0){
+                playerX = 0;
+            }
+            if (playerY + 30 > canvas.height) {
+                playerY = canvas.height - 30;
+            }
+            if(playerY < 0){
+                playerY = 0;
+
+            }
+ 
+       }
+       function checkCollision(){
+        let dx= playerX-targetX
+        let dy= playerY-targetY
+            let distance = Math.hypot(dx, dy);
+            if(distance<30){
+                document.getElementById("score").innerHTML = "Score: 0";
+                playerX = 375;
+                playerY = 225;              
+                console.log('you have died respawning at the centre..... good luck')
+            }
+       }
+       function updateExplosion(){
+            if(!explosionActive)return;
+            explosionTimer++;
+
+            if (explosionTimer >= 5) {
+                explosionTimer = 0;
+                explosionFrame++;
+
+            if(explosionFrame > 9){
+                explosionActive = false;                                 
+            }
+            }
+       }
+        // =========================
+        // Drawing Functions
+        // =========================
+
+        
+
+        function drawPlayer() {
+            let angle = Math.atan2(mouseY - (playerY+15), mouseX - (playerX+15));
+
+            //moves the player
+
+            ctx.font = "30px Arial";
+            ctx.save();
+            ctx.translate(playerX + 15, playerY + 15);
+            ctx.rotate(angle);
+            ctx.fillText(
+                '⭐',
+                -15,
+                10               
+            );
+            ctx.restore();
+            
+        }
+
+
+        // =========================
+        // TARGET
+        // =========================
+
+
+        function drawTarget() {
+            ctx.font = "30px Arial";
+  
+            ctx.fillText(
+                '👽',
+                targetX,
+                targetY
+           );   
+        }
+        
+
+
+        function drawGame() {
+
+            // Clear canvas
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            // Draw player
+            drawPlayer();
+            // Draw target
+            drawTarget();
+        }
+
+        
+
+        function drawAim(){
+            ctx.beginPath();
+            ctx.moveTo(mouseX,mouseY);
+            ctx.lineTo(playerX+15,playerY+15);
+            ctx.strokeStyle = 'grey';
+            ctx.stroke();
+        }
+
+        //==========================
+        //REDRAW THE GAME
+        //==========================
+
+        function redrawGame(){
+            drawGame();
+            drawAim();            
+        }
+
+        //==========================
+        //BULLET MECHANICS
+        //==========================
+
+        function drawBullet(){
+            //move bullet
+
+            redrawGame()            
+            
+            //shoot bullet
+            for(let i = 0; i < bullets.length; i++){
+                let bullet = bullets[i];
+                
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc(bullet[0],bullet[1],5,0,Math.PI*2);
+                ctx.fill();            
+            }
+        }
+        function drawExplosion(){
+            if(!explosionActive)return;
+            ctx.drawImage(
+                explosionImage,
+                explosionFrame*32, //source x
+                0,                 //source y
+                32,                //source width
+                32,                //source height
+                explosionX,        //destination x
+                explosionY,        //destination y
+                64,                //display width
+                64                 //display height
+            )
+                
+            
+        }
+
+        //loops
+        function gameLoop(){
+            //updates
+            moveTarget();
+            updateBullet();
+            updatePlayerPosition()
+            checkCollision()
+            updateExplosion();
+            //draws
+            drawGame();
+            drawAim();
+            drawBullet();
+            drawExplosion();
+            requestAnimationFrame(gameLoop);
+
+        }
+        gameLoop()
+
+    </script>
+
+</body>
+
+</html>
